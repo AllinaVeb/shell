@@ -42,7 +42,8 @@ char **get_list(){
 	string[size] = '\0';
 	int i = 0;
 	while(string[i] != NULL){
-		printf("%s", string[i]);
+		fputs(string[i], stdout);
+		putchar(' ');
 		i++;
 	}
 	putchar('\n');
