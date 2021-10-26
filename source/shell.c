@@ -28,8 +28,29 @@ char *get_word (char *end){
         }
 }
 
+int cmpstring(const char *string){
+        char exit[] = "exit";
+        char quit[] = "quit";
+        int ans1, ans2;
+        ans1 = strcmp(string, exit);
+        ans2 = strcmp(string, quit);
+        if(ans1 == 0 || ans2 == 0){
+                return 1;
+        }
+        else{
+                return 0;
+        }
+}
+
+void launch(char *string){
+	if(fork() == 0){
+		execlp(string, string, NULL);
+	}
+	wait(NULL);
+}
+
 char **get_list(){
-	char end, **string = NULL;
+	char end = 0, **string = NULL;
 	int size = 0, bytes;
         while(end != '\n'){
 		bytes = (size + 1) * sizeof(char*);
@@ -41,9 +62,11 @@ char **get_list(){
 	string = realloc(string, bytes);
 	string[size] = '\0';
 	int i = 0;
-	while(string[i] != NULL){
-		fputs(string[i], stdout);
-		putchar(' ');
+	while(1){
+		if(cmpstring(string[i])){
+                        break;
+		}
+		launch(string[i]);
 		i++;
 	}
 	putchar('\n');
