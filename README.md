@@ -1,1 +1,1 @@
-Fixed output(first part).
+Second part. Warning with wait, dont works with one word at a time ex: (ls <enter>, output will be call "ls" stop all & sanitize's warnings), but with string ex:(ls date pwd exit) works with all words.
