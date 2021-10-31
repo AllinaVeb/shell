@@ -6,28 +6,24 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#define DEF_MODE S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH 
 
-/*void func_read_txt(char c){
-	char *txt = NULL;
-	txt = get_word;
-	int fd = open(&txt, flags);
-	if(c == '>'){
-		dup2();
-	}else{
-		dup2();
-	}
-}
-*/
 char *get_word (char *end){
-        int counter = 0, bytes;
+        int counter = 0, bytes, sing = 0;
         char c, *word = NULL;
 	c = getchar();
 	while(c == ' ' || c == '\t'){
 		c = getchar();
 	}
-//	if(c == '<' || c == '>'){
-//		func_read_txt(c);
-//	}
+/*	if(c == '<' || c == '>'){
+		if(c == '>'){
+			sing++;
+		}else{
+			sing--;
+		}
+		c = gethar();
+	}
+*/
         while(1){
 		bytes = (counter + 1) * sizeof(char);
                 word = realloc(word, bytes);
@@ -56,15 +52,15 @@ int check_end(char *string){
         }
 }
 
-int launch(char **command){
+void launch(char **command){
 	if(fork() == 0){
 		if(execvp(*command, command) == -1){
 			perror("incorrect command");
-			return 1;
+			exit(1);
 		}
 	}
 	wait(NULL);
-	return 0;
+	
 }
 
 char **get_list(){
@@ -98,7 +94,7 @@ int main(int argc, char **argv) {
                 if(check_end(*list)){
                         break;
                 }
-                launch(list);
+		launch(list);
         	putchar('\n');
 		memclear(list);
 	 }
