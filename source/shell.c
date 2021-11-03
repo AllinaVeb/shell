@@ -49,8 +49,6 @@ int check_end(char *string){
         ans1 = strcmp(string, "exit");
         ans2 = strcmp(string, "quit");
         if(ans1 == 0 || ans2 == 0){
-	       	while(c == ' ' || c == '\t'){
-                c = getchar();
                 return 1
         }
         else{
