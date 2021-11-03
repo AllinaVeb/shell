@@ -1,6 +1,6 @@
 Shell
 =====
-Devolopment setup
+Development setup
 -----
 
 Release History
