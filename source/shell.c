@@ -89,7 +89,7 @@ void memclear(char **list) {
 	free(list);
 }
 
-void forwarding(int sing){
+/* void forwarding(int sing){
 	char **file = get_list(&sing);
         int fd = open(**file, O_RDONLY | O_WRONLY, DEF_MODE);
         if(sing > 0){
@@ -99,7 +99,7 @@ void forwarding(int sing){
                         }
 
 }
-
+*/
 int main(int argc, char **argv) {
 	 while(1){
 		int sing = 0;
@@ -107,9 +107,9 @@ int main(int argc, char **argv) {
                 if(check_end(*list)){
                         break;
                 }
-		if(sing){
-			forwarding(sing);
-		}
+//		if(sing){
+//			forwarding(sing);
+//		}
 		launch(list);
         	putchar('\n');
 		memclear(list);
