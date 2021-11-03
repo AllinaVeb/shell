@@ -14,9 +14,6 @@ char *get_word (char *end, int **sing){
 	c = getchar();
 	while(c == ' ' || c == '\t'){
                 c = getchar();
-		if(c == '\n'){
-			return NULL;
-		}
 	}
 	if(c == '<' || c == '>'){
 		if(c == '>'){
