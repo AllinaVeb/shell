@@ -8,23 +8,9 @@
 #include <string.h>
 #define DEF_MODE S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH 
 
-char *get_word (char *end, int **sing){
+char *get_word (char *end, char c){
         int counter = 0, bytes;
-        char c, *word = NULL;
-	c = getchar();
-	while(c == ' ' || c == '\t'){
-		c = getchar();
-	}
-	if(c == '<' || c == '>'){
-		if(c == '>'){
-			**sing = 1;
-		}else{
-			**sing = -1;
-		}
-		c = getchar();
-		return word;
-	}
-
+        char *word = NULL;
         while(1){
 		bytes = (counter + 1) * sizeof(char);
                 word = realloc(word, bytes);
@@ -64,25 +50,32 @@ void launch(char **command){
 	
 }
 
-char **get_list(int *sing){
-	char end = 0, **string = NULL;
+char **get_list(int *sign){
+	char end = 0, c, **string = NULL;
 	int size = 0, bytes;
         while(end != '\n'){
 		bytes = (size + 2) * sizeof(char*);
 		string = realloc(string, bytes);
-		string[size] = get_word(&end, &sing);
-		size++;
+		c = getchar();
+		while(c == ' ' || c == '\t'){
+                	c = getchar();
+        	}
+        	if(c == '<' || c == '>'){
+               		if(c == '>'){
+                       		*sign = 1;
+                	}else{
+                        	*sign = -1;
+                	}
+                c = getchar();
+       		}
+		if(*sign == 0){
+			string[size] = get_word(&end, c);
+			size++;
+		}else{
+			break;
+		}
         }
-	printf("%s pusto?\n", string[size - 1]);
-	printf("%c first symbol\n", string[size - 1][0]);
-	if(string[size - 1][0] == '\0'){
-		string[size - 1][0] = '\n';
-		printf("last word null\n");
-		free(string[size]);
-	}else{
-		string[size] = NULL;
-		printf("last word ne null\n");
-	}
+	string[size] = NULL;
 	return string;
 }
 
@@ -94,30 +87,42 @@ void memclear(char **list) {
 	free(list);
 }
 
- /*void forwarding(int sing){
-	char **file = get_list(&sing);
-        int fd = open(**file, O_RDONLY | O_WRONLY, DEF_MODE);
-        if(sing > 0){
-		dup2(1, in file);
-        }else{
-		dup2(0, out file);
-                        }
+int forwarding(int *sign){
+	int sign2 = 0;
+	char **file = get_list(&sign2);
+	if(fork() == 0){
+		int fd = open(file[0], O_RDONLY | O_WRONLY | O_CREAT, DEF_MODE);
+		if(fd < 0){
+			return 0;
+		}
+     	/*	if(sing > 0){
+			dup2(1, in file);
+        	}else{
+			dup2(0, out file);
+		}
+		*/
+		exit(1);
+	}
+	memclear(file);
+	wait(NULL);
+	return 1;
 
 }
-*/
-int main(int argc, char **argv) {
+
+int main(int argc, char **argv){
 	 while(1){
-		int sing = 0;
-		char **list = get_list(&sing);
+		int sign = 0;
+		char **list = get_list(&sign);
                 if(check_end(*list)){
-                        break;
+			memclear(list);
+			break;
                 }
-//		if(sing){
-//			forwarding(sing);
-//		}
-		if(list != NULL){
-			launch(list);
+		if(sign){
+			int fileopen = forwarding(&sign);
+		//	create disckriptors
+			
 		}
+		launch(list);
         	putchar('\n');
 		memclear(list);
 	 }
