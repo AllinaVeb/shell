@@ -66,7 +66,7 @@ char **get_list(int *sign){
                 	}else{
                         	*sign = -1;
                 	}
-                c = getchar();
+                	c = getchar();
        		}
 		if(*sign == 0){
 			string[size] = get_word(&end, c);
@@ -87,26 +87,32 @@ void memclear(char **list) {
 	free(list);
 }
 
-int forwarding(int *sign){
+int forwarding(int *sign, char **list){
 	int sign2 = 0;
 	char **file = get_list(&sign2);
-	if(fork() == 0){
-		int fd = open(file[0], O_RDONLY | O_WRONLY | O_CREAT, DEF_MODE);
-		if(fd < 0){
-			return 0;
-		}
-     	/*	if(sing > 0){
-			dup2(1, in file);
-        	}else{
-			dup2(0, out file);
-		}
-		*/
-		exit(1);
+	int fd = open(file[0], O_RDONLY | O_WRONLY | O_CREAT, DEF_MODE);
+ 	if(fd < 0){
+		return 0;
+        }
+	if(sign > 0){
+		int savefd = dup(1);
+		dup2(fd, 1);
+		launch(list);
+		close(fd);
+		dup2(savefd, 1);
+		close(savefd);
+        }
+	/* else{
+		int savefd = dup(0)
+		dup2(0, out file);
+		launch(list);
+		close(fd);
+		dup2(savefd, 1);
+		close(savefd);
 	}
+	*/
 	memclear(file);
-	wait(NULL);
 	return 1;
-
 }
 
 int main(int argc, char **argv){
@@ -118,11 +124,10 @@ int main(int argc, char **argv){
 			break;
                 }
 		if(sign){
-			int fileopen = forwarding(&sign);
-		//	create disckriptors
-			
+			int fileopen = forwarding(&sign, list);	
+		}else{
+			launch(list);
 		}
-		launch(list);
         	putchar('\n');
 		memclear(list);
 	 }
