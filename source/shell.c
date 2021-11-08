@@ -66,8 +66,10 @@ char **get_list(int *sign){
                 	}else{
                         	*sign = -1;
                 	}
-                	c = getchar();
        		}
+		if(c == '|'){
+
+		}
 		if(*sign == 0){
 			string[size] = get_word(&end, c);
 			size++;
@@ -90,29 +92,26 @@ void memclear(char **list) {
 int forwarding(int *sign, char **list){
 	int sign2 = 0;
 	char **file = get_list(&sign2);
-	int fd = open(file[0], O_RDONLY | O_WRONLY | O_CREAT, DEF_MODE);
- 	if(fd < 0){
-		return 0;
-        }
-	if(sign > 0){
-		int savefd = dup(1);
-		dup2(fd, 1);
+	if(fork() == 0){
+		FILE *fd;
+		if(sign > 0){
+			fd = freopen(file[0], "w", stdout);
+		}else{
+			fd = freopen(file[0], "r", stdin);
+		}
+		if(fd == NULL){
+                	return 0;
+		}
 		launch(list);
-		close(fd);
-		dup2(savefd, 1);
-		close(savefd);
-        }
-	/* else{
-		int savefd = dup(0)
-		dup2(0, out file);
-		launch(list);
-		close(fd);
-		dup2(savefd, 1);
-		close(savefd);
+		fclose(fd);
+		exit(1);
 	}
-	*/
+	wait(NULL);
 	memclear(file);
-	return 1;
+	if(sign2){
+		forwarding(&sign2, list);
+	}
+	return 0;
 }
 
 int main(int argc, char **argv){
@@ -124,7 +123,7 @@ int main(int argc, char **argv){
 			break;
                 }
 		if(sign){
-			int fileopen = forwarding(&sign, list);	
+			forwarding(&sign, list);	
 		}else{
 			launch(list);
 		}
