@@ -50,7 +50,7 @@ void launch(char **command){
 	
 }
 
-char **get_list(int *sign){
+char **get_list(int *sign, int *sign_pipe){
 	char end = 0, c, **string = NULL;
 	int size = 0, bytes;
         while(end != '\n'){
@@ -68,9 +68,9 @@ char **get_list(int *sign){
                 	}
        		}
 		if(c == '|'){
-
+			*sign_pipe = 1;
 		}
-		if(*sign == 0){
+		if(*sign == 0 && *sign_pipe == 0){
 			string[size] = get_word(&end, c);
 			size++;
 		}else{
@@ -89,43 +89,91 @@ void memclear(char **list) {
 	free(list);
 }
 
-int forwarding(int *sign, char **list){
-	int sign2 = 0;
-	char **file = get_list(&sign2);
-	if(fork() == 0){
-		FILE *fd;
-		if(sign > 0){
-			fd = freopen(file[0], "w", stdout);
-		}else{
-			fd = freopen(file[0], "r", stdin);
-		}
-		if(fd == NULL){
-                	return 0;
-		}
-		launch(list);
-		fclose(fd);
-		exit(1);
+int forwarding(int *sign, int *sign_pipe, char **list){
+	int sign2 = 0, i;
+	char **file = get_list(&sign2, sign_pipe);
+	int fd = open(file[0], O_RDONLY | O_WRONLY | O_CREAT, DEF_MODE);
+	if(fd < 0){
+		return 0;
 	}
-	wait(NULL);
+	if(sign > 0){
+		i = 1;
+	}else{
+		i = 0;
+	}
+	if(sign > 0){
+		int savefd = dup(1);
+		dup2(fd, 1);
+		launch(list);
+		close(fd);
+		dup2(savefd, 1);
+		close(savefd);
+	}else{
+		int savefd = dup(0);
+		dup2(fd, 0);
+		launch(list);
+		close(fd);
+		dup2(savefd, 0);
+		close(savefd);
+	}
 	memclear(file);
 	if(sign2){
-		forwarding(&sign2, list);
+		forwarding(&sign2, sign_pipe, list);
 	}
 	return 0;
 }
 
+void creatpipe(char **cmd1) {
+	int fd[2], sign = 0, sign_pipe1 = 0, sign_pipe2 = 0; //sign_pipe1 = 0 for correct read cmd2
+	pipe(fd);
+	char **cmd2 = get_list(&sign, &sign_pipe1);
+	if(fork() == 0){
+		dup2(fd[0], 1);
+		close(fd[0]);
+		close(fd[1]);
+		launch(cmd1);
+	}
+	if(fork() == 0){
+		dup2(fd[1], 0);
+		close(fd[0]);
+		close(fd[1]);
+		launch(cmd2);
+	}
+	close(fd[0]);
+	close(fd[1]);
+	wait(NULL);
+	wait(NULL);
+//	testpipe2 = get_list(&sign, &sign_pipe2);
+//	if(sign_pipe2)
+/*	if(fork() == 0){
+		int savefd = dup(1);
+		dup2(fd[1], 1);
+		close(fd[0]);
+		launch(cmd1);
+		dup2(savefd, 1);
+	}
+	dup2(fd[0], 0);
+	close(fd[1]);
+	wait(NULL);
+	return 0;
+	*/
+}
+
 int main(int argc, char **argv){
 	 while(1){
-		int sign = 0;
-		char **list = get_list(&sign);
+		int sign = 0, sign_pipe = 0;
+		char **list = get_list(&sign, &sign_pipe);
                 if(check_end(*list)){
 			memclear(list);
 			break;
                 }
 		if(sign){
-			forwarding(&sign, list);	
+			forwarding(&sign, &sign_pipe, list);	
 		}else{
 			launch(list);
+		}
+		if(sign_pipe){
+			creatpipe(list);
 		}
         	putchar('\n');
 		memclear(list);
