@@ -89,8 +89,8 @@ void memclear(char **list) {
 	free(list);
 }
 
-int forwarding(int sign, int sign_pipe, char **list){
-	int sign2 = 0; //need for correct get_list for file
+int forwarding(int sign, char **list){
+	int sign2 = 0, sign_pipe = 0; //need for correct get_list for file
 	char **file = get_list(&sign2, &sign_pipe);
       	if(sign > 0){
 		int fd = open(file[0], O_WRONLY | O_CREAT, DEF_MODE);
@@ -117,29 +117,44 @@ int forwarding(int sign, int sign_pipe, char **list){
 		}
 	}
 	memclear(file);
-	return 0;
+	return 1;
 }
 
-void creatpipe(char **cmd1) {
-	int fd[2], sign = 0, sign_pipe1 = 0; //sign_pipe1 = 0 for correct read cmd2
+void creatpipe(char **cmd1, int sign1) {
+	int fd[2], sign2 = 0, sign_pipe1 = 0; //sign_pipe1 = 0 for correct read cmd2
 	pipe(fd);
-	char **cmd2 = get_list(&sign, &sign_pipe1);
+	char **cmd2 = get_list(&sign2, &sign_pipe1);
 	if(fork() == 0){
-		dup2(fd[0], 1);
+		dup2(fd[1], 1);
 		close(fd[0]);
 		close(fd[1]);
-		launch(cmd1);
+		if(sign1){
+			if(forwarding(sign1, cmd1)){
+			}else{
+				exit(1);
+			}
+
+		}else{
+			if(execvp(*cmd1, cmd1) == -1){
+                        perror("incorrect command");
+                        exit(1);
+			}
+		}
 	}
 	if(fork() == 0){
-		dup2(fd[1], 0);
+		dup2(fd[0], 0);
 		close(fd[0]);
 		close(fd[1]);
-		launch(cmd2);
+                if(execvp(*cmd2, cmd2) == -1){
+                        perror("incorrect command");
+                        exit(1);
+                }
 	}
 	close(fd[0]);
 	close(fd[1]);
 	wait(NULL);
 	wait(NULL);
+	memclear(cmd2);
 //	testpipe2 = get_list(&sign, &sign_pipe2);
 //	if(sign_pipe2)
 /*	if(fork() == 0){
@@ -175,14 +190,15 @@ int main(int argc, char **argv){
                 }
 		if(strcmp(list[0], "cd") == 0){
 			change_dir(list, home);
-		}else{ 
-			if(sign){
-			forwarding(sign, sign_pipe, list);	
-			}else{
-				launch(list);
-			}
+		}else{
 			if(sign_pipe){
-				creatpipe(list);
+                                creatpipe(list, sign);
+                        }else{
+				if(sign){
+				forwarding(sign, list);	
+				}else{
+				launch(list);
+				}
 			}
 		}
         	putchar('\n');
