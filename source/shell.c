@@ -90,16 +90,11 @@ void memclear(char **list) {
 }
 
 int forwarding(int *sign, int *sign_pipe, char **list){
-	int sign2 = 0, i;
+	int sign2 = 0;
 	char **file = get_list(&sign2, sign_pipe);
 	int fd = open(file[0], O_RDONLY | O_WRONLY | O_CREAT, DEF_MODE);
 	if(fd < 0){
 		return 0;
-	}
-	if(sign > 0){
-		i = 1;
-	}else{
-		i = 0;
 	}
 	if(sign > 0){
 		int savefd = dup(1);
@@ -124,7 +119,7 @@ int forwarding(int *sign, int *sign_pipe, char **list){
 }
 
 void creatpipe(char **cmd1) {
-	int fd[2], sign = 0, sign_pipe1 = 0, sign_pipe2 = 0; //sign_pipe1 = 0 for correct read cmd2
+	int fd[2], sign = 0, sign_pipe1 = 0; //sign_pipe1 = 0 for correct read cmd2
 	pipe(fd);
 	char **cmd2 = get_list(&sign, &sign_pipe1);
 	if(fork() == 0){
@@ -158,22 +153,35 @@ void creatpipe(char **cmd1) {
 	return 0;
 	*/
 }
-
+void change_dir(char **cmd, char *home){
+//	const char home = getenv("HOME");
+	char a[100];
+	if(cmd[1] == NULL || strcmp(cmd[1], "~") == 0){
+		chdir(home);
+	}else{
+		chdir(cmd[1]);
+	}
+	printf("%s\n", getcwd(a,100));
+}
 int main(int argc, char **argv){
-	 while(1){
+	char *home = getenv("HOME");
+	while(1){
 		int sign = 0, sign_pipe = 0;
 		char **list = get_list(&sign, &sign_pipe);
                 if(check_end(*list)){
 			memclear(list);
 			break;
                 }
-		if(sign){
+		if(strcmp(list[0], "cd") == 0){
+			change_dir(list, home);
+		}else{ if(sign){
 			forwarding(&sign, &sign_pipe, list);	
-		}else{
-			launch(list);
-		}
-		if(sign_pipe){
-			creatpipe(list);
+			}else{
+				launch(list);
+			}
+			if(sign_pipe){
+				creatpipe(list);
+			}
 		}
         	putchar('\n');
 		memclear(list);
