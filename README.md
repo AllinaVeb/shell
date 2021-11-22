@@ -28,3 +28,7 @@ CHANGE:start of development
 6.0
 CHANGE:works with cd commands  
 
+6.1
+CHANGE:fixed 3 and 4 parts  
+  
+
