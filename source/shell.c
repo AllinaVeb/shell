@@ -40,7 +40,8 @@ int check_end(char *string){
 }
 
 void launch(char **command){
-	if(fork() == 0){
+	pid_t pid = fork();
+	if(pid == 0){
 		if(execvp(*command, command) == -1){
 			perror("incorrect command");
 			exit(1);
@@ -50,20 +51,23 @@ void launch(char **command){
 	wait(&wstatus);
 //	printf("%d\n", WEXITSTATUS(wstatus));
 //	wait(NULL);
-	
 }
 
-char **get_list(int *sign, int *sign_pipe, int *sign_and){
-	char end = 0, c, **string = NULL;
+char **get_list(char *end, int *sign, int *sign_pipe, int *sign_conv){
+	char c, **string = NULL;
 	int size = 0, bytes;
-        while(end != '\n'){
-		bytes = (size + 2) * sizeof(char*);
-		string = realloc(string, bytes);
+        while(*end != '\n'){
 		c = getchar();
 		while(c == ' ' || c == '\t'){
-                	c = getchar();
-        	}
+			c = getchar();
+		}
+		if(c == '\n'){
+			break;
+		}
+		bytes = (size + 2) * sizeof(char*);
+		string = realloc(string, bytes);
         	if(c == '<' || c == '>'){
+			c = getchar();
                		if(c == '>'){
                        		*sign = 1;
                 	}else{
@@ -71,23 +75,49 @@ char **get_list(int *sign, int *sign_pipe, int *sign_and){
                 	}
        		}
 		if(c == '|'){
-			*sign_pipe = 1;
+			c = getchar();
+			if(c == '|'){
+				*sign_conv = -1; // command or ||
+			}else{
+				*sign_pipe = 1;
+			}
 		}
-		if(*sign == 0 && *sign_pipe == 0){
-			string[size] = get_word(&end, c);
+		if(c == '&'){
+			c = getchar();
+			if(c == '&'){
+				*sign_conv = 1; // and &&
+			}else{
+				//phone mode
+			}
+		}
+		if(*sign == 0 && *sign_pipe == 0 && *sign_conv == 0){
+			string[size] = get_word(end, c);
+			if(string[size] == NULL){
+				return 0;
+			}
 			size++;
 		}else{
-			break;
-		}
-		if(strcmp(string[size], "&&") == 0){
-			printf("read &&");
-			*sign_and = 1;
 			break;
 		}
         }
 	string[size] = NULL;
 	return string;
 }
+
+char ***get_cmd(){
+	char ***cmd = NULL, end = 0;
+	int sign_pipe = 0, sign_conv = 0, sign = 0, size = 0;
+	while(1){
+		cmd = realloc(cmd, (size + 2) * sizeof(char**));
+		cmd[size] = get_list(&end, &sign, &sign_pipe, &sign_conv);
+		if(end == '\n'){
+			break;
+		}
+		size++;
+	}
+	cmd[size] = NULL;
+	return cmd;
+}	
 
 void memclear(char **list) {
 	int i;
@@ -97,7 +127,7 @@ void memclear(char **list) {
 	free(list);
 }
 
-int forwarding(int sign, char **list){
+/*int forwarding(int sign, char **list){
 	int sign2 = 0, sign_pipe = 0, sign_and = 0; //need for correct get_list for file
 	char **file = get_list(&sign2, &sign_pipe, &sign_and);
       	if(sign > 0){
@@ -128,10 +158,11 @@ int forwarding(int sign, char **list){
 	memclear(file);
 	return 1;
 }
-
-void creatpipe(char **cmd1, int sign1) {
+*/
+/*void creatpipe(char **cmd1, int sign1) {
 //	char ***cmd = NULL;
-	int size = 0, bytes = 0, i = 0, fd[i][2];
+//	int size = 0, bytes = 0, 
+	int i = 0, fd[i][2];
 	char **cmd = NULL;
 	pipe(fd[i]);
 	if(fork() == 0){
@@ -179,7 +210,7 @@ void creatpipe(char **cmd1, int sign1) {
 //	}
 	memclear(cmd);
 }
-
+*/
 
 /*
 	int fd[2], sign2 = 0, sign_pipe1 = 0, sign_and = 0; //sign_pipe1 = 0 for correct read cmd2
@@ -237,30 +268,37 @@ void handler(int signo){
 int main(int argc, char **argv){
 	char *home = getenv("HOME");
 	signal(SIGINT, handler);
-//	int sign_and = 1;//for enter in
 	while(1){
-		int sign = 0, sign_pipe = 0, sign_and = 0;
-		char **list = get_list(&sign, &sign_pipe, &sign_and);
-		printf(" sign && %d\n", sign_and);
-                if(check_end(*list)){
-			memclear(list);
+//		char *files[2] = {NULL, NULL};
+		char ***cmd = get_cmd();
+		if(check_end(**cmd)){
+			memclear(*cmd);
 			break;
                 }
-		if(strcmp(list[0], "cd") == 0){
-			change_dir(list, home);
-		}else{
+		if(strcmp(*cmd[0], "cd") == 0){
+			change_dir(*cmd, home);
+		}
+/*		else{
 			if(sign_pipe){
-                       	        creatpipe(list, sign);
+                       	        creatpipe(*cmd, sign);
 			}else{
 				if(sign){
-				forwarding(sign, list);	
+				forwarding(sign, *cmd);	
 				}else{
-				launch(list);
+				launch(*cmd);
 				}
 			}
 		}
+		if(sign_conv){
+			if(sign_conv > 0){
+			//	conveer_and(list);
+			}else{
+			//	conveer_or(list);
+			}
+		}
+		*/
         	putchar('\n');
-		memclear(list);
+		memclear(*cmd);
 	 }
         return 0;
 }
