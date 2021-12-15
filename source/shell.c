@@ -23,6 +23,7 @@ char *get_word (char *end, char c){
                         word[counter] = c;
                         counter++;
                         c = getchar();
+			printf("c = %c\n", c);
                 }
         }
 }
@@ -54,18 +55,18 @@ void launch(char **command){
 }
 
 char **get_list(char *end, int *sign, int *sign_pipe, int *sign_conv){
+	printf("we are in fun **get_list\n");
 	char c, **string = NULL;
 	int size = 0, bytes;
         while(*end != '\n'){
 		c = getchar();
+		printf("c  = %c\n", c);
 		while(c == ' ' || c == '\t'){
 			c = getchar();
 		}
 		if(c == '\n'){
 			break;
 		}
-		bytes = (size + 2) * sizeof(char*);
-		string = realloc(string, bytes);
         	if(c == '<' || c == '>'){
 			c = getchar();
                		if(c == '>'){
@@ -73,6 +74,7 @@ char **get_list(char *end, int *sign, int *sign_pipe, int *sign_conv){
                 	}else{
                         	*sign = -1;
                 	}
+			break;
        		}
 		if(c == '|'){
 			c = getchar();
@@ -81,6 +83,8 @@ char **get_list(char *end, int *sign, int *sign_pipe, int *sign_conv){
 			}else{
 				*sign_pipe = 1;
 			}
+			printf("we need finish get list, size need = 2, he is =  %d\n", size);
+			break;
 		}
 		if(c == '&'){
 			c = getchar();
@@ -89,9 +93,14 @@ char **get_list(char *end, int *sign, int *sign_pipe, int *sign_conv){
 			}else{
 				//phone mode
 			}
+			break;
 		}
 		if(*sign == 0 && *sign_pipe == 0 && *sign_conv == 0){
+			bytes = (size + 2) * sizeof(char*);
+                	printf("bytes in fun get_list = %d\n", bytes);
+                	string = realloc(string, bytes);
 			string[size] = get_word(end, c);
+			printf("string [ %d ] = %s\n", size, string[size]);
 			if(string[size] == NULL){
 				return 0;
 			}
@@ -100,16 +109,30 @@ char **get_list(char *end, int *sign, int *sign_pipe, int *sign_conv){
 			break;
 		}
         }
+	printf("size = need 2, he is = %d\n", size);
 	string[size] = NULL;
 	return string;
 }
 
 char ***get_cmd(){
+	printf("we are in ***cmd\n");
 	char ***cmd = NULL, end = 0;
 	int sign_pipe = 0, sign_conv = 0, sign = 0, size = 0;
 	while(1){
-		cmd = realloc(cmd, (size + 2) * sizeof(char**));
+		int bytes = (size + 2) * sizeof(char**);
+		printf(" bytes = %d\n", bytes);
+		cmd = realloc(cmd, bytes);
 		cmd[size] = get_list(&end, &sign, &sign_pipe, &sign_conv);
+		if(cmd[size]){
+			printf("cmd[%d ]  != NULL\n", size );
+		}
+		if(check_end(cmd[0][0])){
+			break;
+		}
+		for(int i = 0; cmd[size][i]; i++){
+			printf("cmd [size %d ] [ i %d] = %s\n", size, i,  cmd[size][i]);
+			printf(" sign = %d,conv = %d, pipe = %d\n", sign, sign_conv, sign_pipe);
+		}
 		if(end == '\n'){
 			break;
 		}
@@ -266,39 +289,29 @@ void handler(int signo){
 }
 
 int main(int argc, char **argv){
-	char *home = getenv("HOME");
-	signal(SIGINT, handler);
+//	char *home = getenv("HOME");
+//	signal(SIGINT, handler);
 	while(1){
 //		char *files[2] = {NULL, NULL};
 		char ***cmd = get_cmd();
-		if(check_end(**cmd)){
-			memclear(*cmd);
-			break;
-                }
+		printf("we are in main while\n");
+		for(int i = 0; cmd[i]; i++){
+			printf("we are in first for for printf\n");
+			for(int j = 0; cmd[i][j];j++){
+				printf("cmd[%d][%d] = %s\n", i, j, cmd[i][j]);
+			}
+		}
+	//	if(check_end(**cmd)){
+		//	memclear(*cmd);
+	//		break;
+          //      }
+		/*
 		if(strcmp(*cmd[0], "cd") == 0){
 			change_dir(*cmd, home);
 		}
-/*		else{
-			if(sign_pipe){
-                       	        creatpipe(*cmd, sign);
-			}else{
-				if(sign){
-				forwarding(sign, *cmd);	
-				}else{
-				launch(*cmd);
-				}
-			}
-		}
-		if(sign_conv){
-			if(sign_conv > 0){
-			//	conveer_and(list);
-			}else{
-			//	conveer_or(list);
-			}
-		}
 		*/
         	putchar('\n');
-		memclear(*cmd);
+//		memclear(*cmd);
 	 }
         return 0;
 }
