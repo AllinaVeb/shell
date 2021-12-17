@@ -78,13 +78,6 @@ char ***get_cmd(int *num_cmd){
 	}
 }
 
-int check_end(char ***cmd){
-	if(strcmp(*cmd[0], "exit") == 0 || strcmp(*cmd[0], "quit") == 0){
-		return 1;
-	}
-	return 0;
-}
-
 void memclear(char ***cmd, int size){
 	for(int i = 0; cmd[i] != NULL; i++){
 		for(int j = 0; j < size; j++){
@@ -95,16 +88,31 @@ void memclear(char ***cmd, int size){
 	free(cmd);
 }
 
+void change_dir(char ***cmd, char *home){
+	char a[100];
+	if(cmd[0][1] == NULL || strcmp(cmd[0][1], "~") == 0){
+		chdir(home);
+	}else{
+		chdir(cmd[0][1]);
+	}
+	printf("%s\n", getcwd(a,100));
+}
+
+
 int main(int argc, char **argv){
+	char *home = getenv("HOME");
 	while(1){
 		int size = 0;
 		char ***cmd = get_cmd(&size);
 		while(cmd == NULL){
 			cmd = get_cmd(&size);
 		}
-		if(check_end(cmd)){
+		if(strcmp(*cmd[0], "exit") == 0 || strcmp(*cmd[0], "quit") == 0){
 			memclear(cmd, size);
 			break;
+		}
+		if(strcmp(*cmd[0], "cd") == 0){
+			change_dir(cmd, home);
 		}
 		for(int i = 0; cmd[i]; i++){
 			for(int j = 0; j < size; j++){
