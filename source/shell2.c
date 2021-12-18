@@ -7,13 +7,9 @@
 #include <stdio.h>
 #include <string.h>
 
-char *get_word(char *end, int *sign_pipe, int *sign_and){
+char *get_word(char *end, char c){
 	char *word = NULL;
 	int size = 0;
-	char c = getchar();
-	while(c == ' ' || c == '\t'){
-		c = getchar();
-	}
 	while(1){
 		if(c == ' ' || c == '\t' || c == '\n'){
 			*end = c;
@@ -22,28 +18,6 @@ char *get_word(char *end, int *sign_pipe, int *sign_and){
 			}
 			word[size] = '\0';
 			return word;
-		}
-		if(c == '|'){
-		//	c = getchar();
-		//	if(c == ' '){
-				*sign_pipe = 1;
-				return NULL;
-		//	}
-		//	else{
-//				*sign_or = 1;
-//				return NULL;
-//			}
-		}
-		if(c == '&'){
-			c = getchar();
-			if(c == '&'){
-				*sign_and = 1;
-				return NULL;
-//			}
-//			else{
-//				*sign_phone = 1;
-//				return NULL;
-			}
 		}
 		word = realloc(word, (size + 2) * sizeof(char));
 		word[size] = c;
@@ -56,21 +30,45 @@ char **get_list(char *end, int *sign_pipe, int *sign_and){
 	char **list = NULL;
 	int size = 0;
 	while(1){
+		char c = getchar();
+		while(c == ' ' || c == '\t'){
+			c = getchar();
+		}
 		list = realloc(list, (size + 1) * sizeof(char*));
-		list[size] = get_word(end, sign_pipe, sign_and);
+		if(c == '|'){
+                //      c = getchar();
+                //      if(c == ' '){
+                                *sign_pipe = 1;
+                                break;
+                //      }
+                //      else{
+//                              *sign_or = 1;
+//                              break;
+//                      }
+                }
+                if(c == '&'){
+                        c = getchar();
+                        if(c == '&'){
+                                *sign_and = 1;
+                                break;
+//                      }
+//                      else{
+//                              *sign_phone = 1;
+//                              break;
+                        }
+                }
+		list[size] = get_word(end, c);
 		if(list[0] == NULL){
 			return NULL;
-		}
-		if(list[size] == NULL){
-			return list;
 		}
 		size++;
 		if(*end == '\n'){
 			list = realloc(list, (size + 1) * sizeof(char*));
-			list[size] = NULL;
-			return list;
+			break;
 		}
 	}
+	list[size] = NULL;
+	return list;
 }
 
 char ***get_cmd(int *sign_pipe, int *sign_and){
@@ -112,13 +110,18 @@ void change_dir(char ***cmd, char *home){
 
 void conv_and(char ***cmd, int size){
 	for(int i = 0; i <= size; i++){
-		if(fork() == 0){
+		pid_t pid = fork();
+		if(pid == 0){
 			if(execvp(*cmd[i], cmd[i]) == -1){
 				perror("incorrect command");
 				exit(1);
 			}
 		}
-		wait(NULL);
+		int wstatus;
+		waitpid(pid, &wstatus, 0);
+		if(WIFEXITED(wstatus == 0)){
+			break;
+		}
 	}
 }
 
