@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 
+int son_pid = -1;
+
 char *get_word(char *end, char c){
 	char *word = NULL;
 	int size = 0;
@@ -26,7 +28,7 @@ char *get_word(char *end, char c){
 	}
 }
 
-char **get_list(char *end, int *sign_pipe, int *sign_and, int *sign_or){
+char **get_list(char *end, int *sign_pipe, int *sign_and, int *sign_or, char *files[]){
 	char **list = NULL;
 	int size = 0;
 	while(1){
@@ -35,6 +37,25 @@ char **get_list(char *end, int *sign_pipe, int *sign_and, int *sign_or){
 			c = getchar();
 		}
 		list = realloc(list, (size + 1) * sizeof(char*));
+		if(c == '<' || c == '>'){
+			if(c == '<'){
+				c = getchar();
+				while(c == ' ' || c == '\t'){
+					c = getchar();
+				}
+				files[0] = get_word(end, c);
+			}else{
+				c = getchar();
+				while(c == ' ' || c == '\t'){
+					c = getchar();
+				}
+				files[1] = get_word(end, c);
+			}
+			if(*end == '\n'){
+				break;
+			}
+			continue;
+		}
 		if(c == '|'){
 			c = getchar();
 			if(c == ' '){
@@ -70,12 +91,12 @@ char **get_list(char *end, int *sign_pipe, int *sign_and, int *sign_or){
 	return list;
 }
 
-char ***get_cmd(int *sign_pipe, int *sign_and, int *sign_or){
+char ***get_cmd(int *sign_pipe, int *sign_and, int *sign_or, char *files[]){
 	char end = 0, ***cmd = NULL;
 	int size = 0;
 	while(1){
 		cmd = realloc(cmd, (size + 2) * sizeof(char**));
-		cmd[size] = get_list(&end, sign_pipe, sign_and, sign_or);
+		cmd[size] = get_list(&end, sign_pipe, sign_and, sign_or, files);
 		if(cmd[0] == NULL){
 			return NULL;
 		}
@@ -141,14 +162,22 @@ void conv_or(char ***cmd, int size){
 	}
 }
 
+void handler(int signo){
+	puts("received SIGINT");
+	kill(son_pid, SIGKILL);
+}
+
+
 int main(int argc, char **argv){
 	char *home = getenv("HOME");
+//	signal(SIGINT, handler);
 	int size;
 	while(1){
+		char *files[] = {NULL, NULL};
 		int sign_pipe = 0, sign_and = 0, sign_or = 0;
-		char ***cmd = get_cmd(&sign_pipe, &sign_and, &sign_or);
+		char ***cmd = get_cmd(&sign_pipe, &sign_and, &sign_or, files);
 		while(cmd == NULL){
-			cmd = get_cmd(&sign_pipe, &sign_and, &sign_or);
+			cmd = get_cmd(&sign_pipe, &sign_and, &sign_or, files);
 		}
 		if(strcmp(*cmd[0], "exit") == 0 || strcmp(*cmd[0], "quit") == 0){
 			memclear(cmd);
@@ -162,6 +191,7 @@ int main(int argc, char **argv){
 				printf("cmd[i = %d][j = %d] = %s\n", size, j, cmd[size][j]);
 			}
 		}
+		printf("files[0] = %s, files[1] = %s\n", files[0], files[1]);
 		if(sign_and){
 			conv_and(cmd, size);
 		}
@@ -178,6 +208,8 @@ int main(int argc, char **argv){
 			wait(NULL);
 		}
 		putchar('\n');
+		free(files[0]);
+		free(files[1]);
 		memclear(cmd);
 	}
 	return 0;
