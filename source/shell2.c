@@ -26,7 +26,7 @@ char *get_word(char *end, char c){
 	}
 }
 
-char **get_list(char *end, int *sign_pipe, int *sign_and){
+char **get_list(char *end, int *sign_pipe, int *sign_and, int *sign_or){
 	char **list = NULL;
 	int size = 0;
 	while(1){
@@ -36,16 +36,15 @@ char **get_list(char *end, int *sign_pipe, int *sign_and){
 		}
 		list = realloc(list, (size + 1) * sizeof(char*));
 		if(c == '|'){
-                //      c = getchar();
-                //      if(c == ' '){
-                                *sign_pipe = 1;
-                                break;
-                //      }
-                //      else{
-//                              *sign_or = 1;
-//                              break;
-//                      }
-                }
+			c = getchar();
+			if(c == ' '){
+				*sign_pipe = 1;
+				break;
+			}else{
+				*sign_or = 1;
+				break;
+			}
+		}
                 if(c == '&'){
                         c = getchar();
                         if(c == '&'){
@@ -71,12 +70,12 @@ char **get_list(char *end, int *sign_pipe, int *sign_and){
 	return list;
 }
 
-char ***get_cmd(int *sign_pipe, int *sign_and){
+char ***get_cmd(int *sign_pipe, int *sign_and, int *sign_or){
 	char end = 0, ***cmd = NULL;
 	int size = 0;
 	while(1){
 		cmd = realloc(cmd, (size + 2) * sizeof(char**));
-		cmd[size] = get_list(&end, sign_pipe, sign_and);
+		cmd[size] = get_list(&end, sign_pipe, sign_and, sign_or);
 		if(cmd[0] == NULL){
 			return NULL;
 		}
@@ -112,14 +111,31 @@ void conv_and(char ***cmd, int size){
 	for(int i = 0; i <= size; i++){
 		pid_t pid = fork();
 		if(pid == 0){
-			if(execvp(*cmd[i], cmd[i]) == -1){
+			if(execvp(*cmd[i], cmd[i]) < 0){
+				perror("incorrect command");
+				exit(1);
+			}
+		}
+		int wstatus;
+		waitpid(pid, &wstatus, -1);
+		if(WIFEXITED(wstatus != 0)){
+			break;
+		}
+	}
+}
+
+void conv_or(char ***cmd, int size){
+	for(int i = 0; i <= size; i++){
+		pid_t pid = fork();
+		if(pid == 0){
+			if(execvp(*cmd[i], cmd[i]) < 0){
 				perror("incorrect command");
 				exit(1);
 			}
 		}
 		int wstatus;
 		waitpid(pid, &wstatus, 0);
-		if(WIFEXITED(wstatus == 0)){
+		if(WIFEXITED(wstatus != 0)){
 			break;
 		}
 	}
@@ -129,10 +145,10 @@ int main(int argc, char **argv){
 	char *home = getenv("HOME");
 	int size;
 	while(1){
-		int sign_pipe = 0, sign_and = 0;
-		char ***cmd = get_cmd(&sign_pipe, &sign_and);
+		int sign_pipe = 0, sign_and = 0, sign_or = 0;
+		char ***cmd = get_cmd(&sign_pipe, &sign_and, &sign_or);
 		while(cmd == NULL){
-			cmd = get_cmd(&sign_pipe, &sign_and);
+			cmd = get_cmd(&sign_pipe, &sign_and, &sign_or);
 		}
 		if(strcmp(*cmd[0], "exit") == 0 || strcmp(*cmd[0], "quit") == 0){
 			memclear(cmd);
@@ -149,9 +165,12 @@ int main(int argc, char **argv){
 		if(sign_and){
 			conv_and(cmd, size);
 		}
+		if(sign_or){
+			conv_or(cmd, size);
+		}
 		else{
 			if(fork() == 0){
-				if(execvp(**cmd, *cmd) == -1){
+				if(execvp(**cmd, *cmd) < 0){
                        			perror("incorrect command");
                        			exit(1);
                			}
