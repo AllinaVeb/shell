@@ -163,38 +163,8 @@ void conv_or(char ***cmd, int size){
 	}
 }
 
-int file_in(char *files){
-	if(files){
-		int fd = open(files, O_RDONLY, S_IROTH);
-		if(fd < 0){
-			return -1;
-		}
-		return 1;
-	}
-	return 0;
-}
-
-int file_out(char *files){
-	if(files){
-		int fd = open(files, O_WRONLY | O_CREAT, DEF_MODE);
-		if(fd < 0){
-			return -1;
-		}
-	}
-	return 1;
-}
-
-void launch(char **cmd, int fd_in, int fd_out){
+void launch(char **cmd){
 	if(fork() == 0){
-/*		if(fd_in != 0){
-			dup2(fd_in, 0);
-			close(fd_in);
-		}
-		if(fd_out != 1){
-			dup2(fd_out, 1);
-			close(fd_out);
-		}
-		*/
 		if(execvp(cmd[0], cmd) < 0){
 			perror("incorrect command");
 			exit(1);
@@ -202,26 +172,70 @@ void launch(char **cmd, int fd_in, int fd_out){
 	}
 }
 
-void conv_pipe(char ***cmd, int size, char *files[]){
-	printf("we are in fun conv_pipe\n");
-	int pipefd[size + 1][2], i;
-	pipefd[0][0] = file_in(files[0]);
-	pipefd[size][1] = file_out(files[1]);
-	printf("pipefd[0][0] = %d, pipefde[%d][1] = %d", pipefd[0][0], size, pipefd[size][1]);
-	for(i = 0; i < size; i++){
-		if((i + 1) != size){
-			pipe(pipefd[i]);
+int conv_pipe(char ***cmd, int size, char *files[]){
+	int fd[size - 1][2], i = 0;
+	pipe(fd[i]);
+	if(files[0] != NULL){
+		int file_fd = open(files[0], O_RDONLY, S_IROTH);
+		if(file_fd < 0){
+			return 0;
 		}
-		launch(cmd[i], pipefd[i][0], pipefd[i][1]);
-		if(pipefd[i][0] != 0){
-			close(pipefd[i][0]);
+		if(fork() == 0){
+			dup2(file_fd, 0);
+			close(file_fd);
+			dup2(fd[i][1], 1);
+			close(fd[i][1]);
+			close(fd[i][0]);
+			launch(cmd[i]);
 		}
-		if(pipefd[i][1] != 1){
-			close(pipefd[i][1]);
+	}
+	else{
+		if(fork() == 0){
+			dup2(fd[i][1], 1);
+			close(fd[i][1]);
+			close(fd[i][0]);
+			launch(cmd[i]);
 		}
+	}
+	close(fd[i][1]);
+	wait(NULL);
+	for(i = 1; i < size; i++){
+		pipe(fd[i]);
+		if(fork() == 0){
+			dup2(fd[i - 1][0], 0);
+			close(fd[i - 1][0]);
+			dup2(fd[i][1], 1);
+			close(fd[i][1]);
+			close(fd[i][0]);
+			launch(cmd[i]);
+		}
+		close(fd[i - 1][0]);
+		close(fd[i][1]);
 		wait(NULL);
 	}
+	if(files[1] != NULL){
+		int file_fd = open(files[0], O_WRONLY | O_CREAT, DEF_MODE);
+			if(file_fd < 0){
+				return 0;
+			}
+			if(fork() == 0){
+				dup2(fd[i][0],0);
+				close(fd[i][0]);
+				dup2(file_fd, 1);
+				launch(cmd[i]);
+				close(file_fd);
+			}
+	}
+	else{
+		if(fork() == 0){
+			dup2(fd[i][0], 0);
+			close(fd[i][0]);
+			launch(cmd[i]);
+		}
+	}
+	wait(NULL);	
 }
+
 
 void handler(int signo){
 	puts("received SIGINT");
