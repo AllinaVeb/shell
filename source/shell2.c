@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#define DEF_MODE S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH
 
 int son_pid = -1;
 
@@ -114,7 +115,7 @@ void memclear(char ***cmd){
 		free(cmd[i][j]);
 		}
 		free(cmd[i]);
-	}
+	} 
 	free(cmd);
 }
 
@@ -162,6 +163,66 @@ void conv_or(char ***cmd, int size){
 	}
 }
 
+int file_in(char *files){
+	if(files){
+		int fd = open(files, O_RDONLY, S_IROTH);
+		if(fd < 0){
+			return -1;
+		}
+		return 1;
+	}
+	return 0;
+}
+
+int file_out(char *files){
+	if(files){
+		int fd = open(files, O_WRONLY | O_CREAT, DEF_MODE);
+		if(fd < 0){
+			return -1;
+		}
+	}
+	return 1;
+}
+
+void launch(char **cmd, int fd_in, int fd_out){
+	if(fork() == 0){
+/*		if(fd_in != 0){
+			dup2(fd_in, 0);
+			close(fd_in);
+		}
+		if(fd_out != 1){
+			dup2(fd_out, 1);
+			close(fd_out);
+		}
+		*/
+		if(execvp(cmd[0], cmd) < 0){
+			perror("incorrect command");
+			exit(1);
+		}
+	}
+}
+
+void conv_pipe(char ***cmd, int size, char *files[]){
+	printf("we are in fun conv_pipe\n");
+	int pipefd[size + 1][2], i;
+	pipefd[0][0] = file_in(files[0]);
+	pipefd[size][1] = file_out(files[1]);
+	printf("pipefd[0][0] = %d, pipefde[%d][1] = %d", pipefd[0][0], size, pipefd[size][1]);
+	for(i = 0; i < size; i++){
+		if((i + 1) != size){
+			pipe(pipefd[i]);
+		}
+		launch(cmd[i], pipefd[i][0], pipefd[i][1]);
+		if(pipefd[i][0] != 0){
+			close(pipefd[i][0]);
+		}
+		if(pipefd[i][1] != 1){
+			close(pipefd[i][1]);
+		}
+		wait(NULL);
+	}
+}
+
 void handler(int signo){
 	puts("received SIGINT");
 	kill(son_pid, SIGKILL);
@@ -183,29 +244,33 @@ int main(int argc, char **argv){
 			memclear(cmd);
 			break;
 		}
-		if(strcmp(*cmd[0], "cd") == 0){
-			change_dir(cmd, home);
-		}
 		for(size = 0; cmd[size]; size++){
 			for(int j = 0; cmd[size][j]; j++){
 				printf("cmd[i = %d][j = %d] = %s\n", size, j, cmd[size][j]);
 			}
 		}
 		printf("files[0] = %s, files[1] = %s\n", files[0], files[1]);
-		if(sign_and){
-			conv_and(cmd, size);
-		}
-		if(sign_or){
-			conv_or(cmd, size);
-		}
-		else{
-			if(fork() == 0){
-				if(execvp(**cmd, *cmd) < 0){
-                       			perror("incorrect command");
-                       			exit(1);
-               			}
+		if(strcmp(*cmd[0], "cd") == 0){
+			change_dir(cmd, home);
+		}else{
+			if(sign_and){
+				conv_and(cmd, size);
 			}
-			wait(NULL);
+			if(sign_or){
+				conv_or(cmd, size);
+			}
+			if(sign_pipe){
+				conv_pipe(cmd, size, files);
+			}
+			else{
+				if(fork() == 0){
+					if(execvp(**cmd, *cmd) < 0){
+                       				perror("incorrect command");
+                       				exit(1);
+               				}
+				}
+				wait(NULL);
+			}
 		}
 		putchar('\n');
 		free(files[0]);
