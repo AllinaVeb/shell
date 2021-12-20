@@ -168,14 +168,16 @@ void launch(char **cmd){
 		if(execvp(cmd[0], cmd) < 0){
 			perror("incorrect command");
 			exit(1);
-		}
+		}	
 	}
+	wait(NULL);
 }
 
 int conv_pipe(char ***cmd, int size, char *files[]){
-	int fd[size - 1][2], i = 0;
-	pipe(fd[i]);
-	if(files[0] != NULL){
+//	int fd[size - 1][2], i = 0;
+	int fd[1][2];	
+	pipe(fd[0]);
+/*	if(files[0] != NULL){
 		int file_fd = open(files[0], O_RDONLY, S_IROTH);
 		if(file_fd < 0){
 			return 0;
@@ -190,16 +192,21 @@ int conv_pipe(char ***cmd, int size, char *files[]){
 		}
 	}
 	else{
+	*/
 		if(fork() == 0){
-			dup2(fd[i][1], 1);
-			close(fd[i][1]);
-			close(fd[i][0]);
-			launch(cmd[i]);
+			dup2(fd[0][1], 1);
+			close(fd[0][1]);
+			close(fd[0][0]);
+			if(execvp(*cmd[0], *cmd) < 0){
+                 	       perror("incorrect command");
+			       exit(1);
+                	}
+
 		}
-	}
-	close(fd[i][1]);
+//	}
+	close(fd[0][1]);
 	wait(NULL);
-	for(i = 1; i < size; i++){
+/*	for(i = 1; i + 1 < size; i++){
 		pipe(fd[i]);
 		if(fork() == 0){
 			dup2(fd[i - 1][0], 0);
@@ -213,7 +220,8 @@ int conv_pipe(char ***cmd, int size, char *files[]){
 		close(fd[i][1]);
 		wait(NULL);
 	}
-	if(files[1] != NULL){
+	*/
+/*	if(files[1] != NULL){
 		int file_fd = open(files[0], O_WRONLY | O_CREAT, DEF_MODE);
 			if(file_fd < 0){
 				return 0;
@@ -227,13 +235,20 @@ int conv_pipe(char ***cmd, int size, char *files[]){
 			}
 	}
 	else{
+	*/
 		if(fork() == 0){
-			dup2(fd[i][0], 0);
-			close(fd[i][0]);
-			launch(cmd[i]);
+			dup2(fd[0][0], 0);
+			close(fd[0][0]);
+			if(execvp(*cmd[1], *cmd) < 0){
+                               perror("incorrect command");
+                               exit(1);
+                        }
+
 		}
-	}
+//	}
+	close(fd[0][0]);	
 	wait(NULL);	
+	return 0;
 }
 
 
@@ -242,6 +257,55 @@ void handler(int signo){
 	kill(son_pid, SIGKILL);
 }
 
+int forwarding(char ***cmd, char *files[]){
+	if(files[0] != NULL && files[1] != NULL){
+		int filefd0 = open(files[0], O_RDONLY, S_IROTH);
+		int filefd1 = open(files[1], O_WRONLY | O_CREAT, DEF_MODE);
+		if(filefd0 < 0 || filefd1 < 0){
+			return 0;
+		}
+		if(fork() == 0){
+			dup2(filefd0, 0);
+			dup2(filefd1, 1);
+			close(filefd0);
+			close(filefd1);
+			launch(cmd[0]);
+		}
+		close(filefd0);
+		close(filefd1);
+	}
+	else{
+		if(files[0] != NULL){
+			int file_fd = open(files[0], O_RDONLY, S_IROTH);
+			if(file_fd < 0){
+				return 0;
+			}
+			if(fork() == 0){
+				dup2(file_fd, 0);
+				close(file_fd);
+				launch(cmd[0]);
+			}
+			close(file_fd);
+		}
+		if(files[1] != NULL){
+			int file_fd = open(files[1], O_WRONLY | O_CREAT, DEF_MODE);
+			if(file_fd < 0){
+				return 0;
+			}
+			if(fork() == 0){
+				dup2(file_fd, 1);
+				close(file_fd);
+				if(execvp(*cmd[0], *cmd) < 0){
+		                        perror("incorrect command");
+                		        exit(1);
+				}
+			}
+			close(file_fd);
+			wait(NULL);
+		}
+	}
+	return 0;
+}
 
 int main(int argc, char **argv){
 	char *home = getenv("HOME");
@@ -266,24 +330,23 @@ int main(int argc, char **argv){
 		printf("files[0] = %s, files[1] = %s\n", files[0], files[1]);
 		if(strcmp(*cmd[0], "cd") == 0){
 			change_dir(cmd, home);
-		}else{
+		}
+		else{
 			if(sign_and){
 				conv_and(cmd, size);
 			}
-			if(sign_or){
-				conv_or(cmd, size);
-			}
-			if(sign_pipe){
+			else if(sign_or){
+					conv_or(cmd, size);
+				}
+			else if(sign_pipe){
 				conv_pipe(cmd, size, files);
 			}
+			else if(files[0] || files[1]){
+				forwarding(cmd, files);
+			}
 			else{
-				if(fork() == 0){
-					if(execvp(**cmd, *cmd) < 0){
-                       				perror("incorrect command");
-                       				exit(1);
-               				}
-				}
-				wait(NULL);
+				printf("i shouldnt be here\n");
+				launch(cmd[0]);
 			}
 		}
 		putchar('\n');
