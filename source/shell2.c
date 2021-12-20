@@ -174,10 +174,9 @@ void launch(char **cmd){
 }
 
 int conv_pipe(char ***cmd, int size, char *files[]){
-//	int fd[size - 1][2], i = 0;
-	int fd[1][2];	
-	pipe(fd[0]);
-/*	if(files[0] != NULL){
+	int fd[size - 1][2], i = 0;	
+	pipe(fd[i]);
+	if(files[0] != NULL){
 		int file_fd = open(files[0], O_RDONLY, S_IROTH);
 		if(file_fd < 0){
 			return 0;
@@ -188,25 +187,26 @@ int conv_pipe(char ***cmd, int size, char *files[]){
 			dup2(fd[i][1], 1);
 			close(fd[i][1]);
 			close(fd[i][0]);
-			launch(cmd[i]);
+			if(execvp(*cmd[i], *cmd) < 0){
+                               perror("incorrect command");
+                               exit(1);
+                        }
 		}
+		close(file_fd);
 	}
-	else{
-	*/
-		if(fork() == 0){
-			dup2(fd[0][1], 1);
-			close(fd[0][1]);
-			close(fd[0][0]);
-			if(execvp(*cmd[0], *cmd) < 0){
+	else if(fork() == 0){
+			dup2(fd[i][1], 1);
+			close(fd[i][1]);
+			close(fd[i][0]);
+			if(execvp(*cmd[i], *cmd) < 0){
                  	       perror("incorrect command");
 			       exit(1);
                 	}
 
 		}
-//	}
-	close(fd[0][1]);
+	close(fd[i][1]);
 	wait(NULL);
-/*	for(i = 1; i + 1 < size; i++){
+	for(i = 1; i + 1 < size; i++){
 		pipe(fd[i]);
 		if(fork() == 0){
 			dup2(fd[i - 1][0], 0);
@@ -214,39 +214,42 @@ int conv_pipe(char ***cmd, int size, char *files[]){
 			dup2(fd[i][1], 1);
 			close(fd[i][1]);
 			close(fd[i][0]);
-			launch(cmd[i]);
+			if(execvp(*cmd[i], *cmd) < 0){
+                               perror("incorrect command");
+                               exit(1);
+                        }
 		}
 		close(fd[i - 1][0]);
 		close(fd[i][1]);
 		wait(NULL);
 	}
-	*/
-/*	if(files[1] != NULL){
-		int file_fd = open(files[0], O_WRONLY | O_CREAT, DEF_MODE);
+	if(files[1] != NULL){
+		int file_fd = open(files[1], O_WRONLY | O_CREAT, DEF_MODE);
 			if(file_fd < 0){
 				return 0;
 			}
 			if(fork() == 0){
-				dup2(fd[i][0],0);
-				close(fd[i][0]);
+				dup2(fd[i - 1][0],0);
+				close(fd[i - 1][0]);
 				dup2(file_fd, 1);
-				launch(cmd[i]);
 				close(file_fd);
+				if(execvp(*cmd[i], *cmd) < 0){
+					perror("incorrect command");
+					exit(1);
+            			}
 			}
+			close(file_fd);
 	}
-	else{
-	*/
-		if(fork() == 0){
-			dup2(fd[0][0], 0);
-			close(fd[0][0]);
-			if(execvp(*cmd[1], *cmd) < 0){
+	else if(fork() == 0){
+			dup2(fd[i - 1][0], 0);
+			close(fd[i - 1][0]);
+			if(execvp(*cmd[i], *cmd) < 0){
                                perror("incorrect command");
                                exit(1);
                         }
 
 		}
-//	}
-	close(fd[0][0]);	
+	close(fd[i - 1][0]);	
 	wait(NULL);	
 	return 0;
 }
@@ -345,7 +348,6 @@ int main(int argc, char **argv){
 				forwarding(cmd, files);
 			}
 			else{
-				printf("i shouldnt be here\n");
 				launch(cmd[0]);
 			}
 		}
