@@ -139,8 +139,8 @@ void conv_and(char ***cmd, int size){
 			}
 		}
 		int wstatus;
-		waitpid(pid, &wstatus, -1);
-		if(WIFEXITED(wstatus != 0)){
+		waitpid(pid, &wstatus, 0);
+		if(WIFEXITED(wstatus == 0)){
 			break;
 		}
 	}
@@ -327,10 +327,10 @@ int main(int argc, char **argv){
 		}
 		for(size = 0; cmd[size]; size++){
 			for(int j = 0; cmd[size][j]; j++){
-				printf("cmd[i = %d][j = %d] = %s\n", size, j, cmd[size][j]);
+				//printf("cmd[i = %d][j = %d] = %s\n", size, j, cmd[size][j]);
 			}
 		}
-		printf("files[0] = %s, files[1] = %s\n", files[0], files[1]);
+//		printf("files[0] = %s, files[1] = %s\n", files[0], files[1]);
 		if(strcmp(*cmd[0], "cd") == 0){
 			change_dir(cmd, home);
 		}
@@ -339,7 +339,7 @@ int main(int argc, char **argv){
 				conv_and(cmd, size);
 			}
 			else if(sign_or){
-					conv_or(cmd, size);
+				conv_or(cmd, size);
 				}
 			else if(sign_pipe){
 				conv_pipe(cmd, size, files);
