@@ -135,7 +135,7 @@ void change_dir(char ***cmd, char *home){
 }
 
 void conv_and(char ***cmd, int size){
-	for(int i = 0; i <= size; i++){
+	for(int i = 0; i < size; i++){
 		pid_t pid = fork();
 		if(pid == 0){
 			if(execvp(*cmd[i], cmd[i]) < 0){
@@ -155,7 +155,7 @@ void conv_and(char ***cmd, int size){
 }
 
 void conv_or(char ***cmd, int size){
-	for(int i = 0; i <= size; i++){
+	for(int i = 0; i < size; i++){
 		pid_t pid = fork();
 		if(pid == 0){
 			if(execvp(*cmd[i], cmd[i]) < 0){
