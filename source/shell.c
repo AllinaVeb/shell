@@ -277,13 +277,14 @@ void handler(int signo){
 }
 
 int forwarding(char ***cmd, char *files[]){
+	pid_t pid;
 	if(files[0] != NULL && files[1] != NULL){
 		int filefd0 = open(files[0], O_RDONLY, S_IROTH);
 		int filefd1 = open(files[1], O_WRONLY | O_CREAT, DEF_MODE);
 		if(filefd0 < 0 || filefd1 < 0){
 			return 0;
 		}
-		pid_t pid = fork();
+		pid = fork();
 		if(pid == 0){
 			dup2(filefd0, 0);
 			dup2(filefd1, 1);
@@ -303,7 +304,7 @@ int forwarding(char ***cmd, char *files[]){
 			if(file_fd < 0){
 				return 0;
 			}
-			pid_t pid = fork();
+			pid = fork();
 			if(pid == 0){
 				dup2(file_fd, 0);
 				close(file_fd);
@@ -319,7 +320,7 @@ int forwarding(char ***cmd, char *files[]){
 			if(file_fd < 0){
 				return 0;
 			}
-			pid_t pid = fork();
+			pid = fork();
 			if(pid == 0){
 				dup2(file_fd, 1);
 				close(file_fd);
