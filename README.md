@@ -1,34 +1,28 @@
 Shell
 =====
+Program acting as Shell   
 
 Installation 
 -----
-make
+* create a directory "shell"   
+* load in "shell" "bin", "source" and "Makefile"   
+* open "shell" in terminal   
+* enter `make`   
+* for start enter `./bin/shell`   
+* for finish enter `exit` or `quit`   
 
-Release History
+
+Command examples
 ----
-2.1 
-CHANGE:works with spaces on string's start  
+* running one command   
+`date`, `ls -o`, `sleep 5`, `pwd`, `rm somefile.txt`, ...   
+* forwarding   
+`ls > a.txt`, `ws < a.txt`, ...   
+* conveyor &&(and) and ||(or)   
+`ls && date && pwd`, `ls && wrong command or some trash && date`,  `wrong command or some trash || ls`, `date || pwd`, ...   
+* conveyor |(pipe)   
+`ls | sort |  wc`, ...   
+* conveyor |(pipe) with forwarding   
+`sort < a.txt | wc > b.txt`, ...   
 
-2.2
-CHANGE:works with wrong arguments exec  
-
-3.0
-CHANGE:open file  
-
-3.1
-CHANGE: works with >  
-
-4.0
-CHANGE:start of development  
-
-5.0
-CHANGE:start of development  
-
-6.0
-CHANGE:works with cd commands  
-
-6.1
-CHANGE:fixed 3 and 4 parts  
-  
 
