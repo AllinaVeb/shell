@@ -326,9 +326,9 @@ int forwarding(char ***cmd, char *files[]){
 				}
 			}
 			close(file_fd);
-			wait(NULL);
 		}
 	}
+	wait(NULL);
 	return 0;
 }
 
@@ -383,6 +383,7 @@ int main(int argc, char **argv){
 					}
 				}
 				son_pid = pid;
+				wait(NULL);
 			}
 		}
 		putchar('\n');
