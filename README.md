@@ -7,7 +7,7 @@ Installation
 * create a directory "shell"   
 * load in "shell" "bin", "source" and "Makefile"   
 * open "shell" in terminal   
-* enter `make`   
+* run `make`   
 * for start enter `./bin/shell`   
 * for finish enter `exit` or `quit`   
 
