@@ -8,7 +8,8 @@
 #include <string.h>
 #define DEF_MODE S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH
 
-int son_pid = -1;
+pid_t *son_pids = NULL;
+int proc_num = 0;
 
 char *get_word(char *end, char c){
 	char *word = NULL;
@@ -122,6 +123,9 @@ void memclear(char ***cmd){
 		free(cmd[i]);
 	} 
 	free(cmd);
+	free(son_pids);
+	son_pids = NULL;
+	proc_num = 0;
 }
 
 void change_dir(char ***cmd, char *home){
@@ -136,46 +140,44 @@ void change_dir(char ***cmd, char *home){
 
 void conv_and(char ***cmd, int size){
 	for(int i = 0; i < size; i++){
-		pid_t pid = fork();
-		if(pid == 0){
+		son_pids = realloc(son_pids, (proc_num + 1) * sizeof(pid_t));
+		son_pids[i] = fork();
+		if(son_pids[i] == 0){
 			if(execvp(*cmd[i], cmd[i]) < 0){
 				perror("incorrect command");
 				exit(1);
 			}
 		}
-		if(i == 0){
-			son_pid = pid;
-		}
 		int wstatus;
-		waitpid(pid, &wstatus, 0);
+		waitpid(son_pids[i], &wstatus, 0);
 		if(WIFEXITED(wstatus == 0)){
 			break;
 		}
+		proc_num++;
 	}
 }
 
 void conv_or(char ***cmd, int size){
 	for(int i = 0; i < size; i++){
-		pid_t pid = fork();
-		if(pid == 0){
+		son_pids = realloc(son_pids, (proc_num + 1) * sizeof(pid_t));
+		son_pids[i] = fork();
+		if(son_pids[i] == 0){
 			if(execvp(*cmd[i], cmd[i]) < 0){
 				perror("incorrect command");
 				exit(1);
 			}
 		}
-		if(i == 0){
-			son_pid = pid;
-		}
 		int wstatus;
-		waitpid(pid, &wstatus, 0);
+		waitpid(son_pids[i], &wstatus, 0);
 		if(WIFEXITED(wstatus != 0)){
 			break;
 		}
+		proc_num++;
 	}
 }
 
 int *conv_pipe(char ***cmd, int size, char *files[], int sign_phone){
-	int *pid = malloc(size * sizeof(int));
+	son_pids = realloc(son_pids, (proc_num + 1) * sizeof(pid_t));
 	int fd[size - 1][2], i = 0;	
 	pipe(fd[i]);
 	if(files[0] != NULL){
@@ -183,8 +185,8 @@ int *conv_pipe(char ***cmd, int size, char *files[], int sign_phone){
 		if(file_fd < 0){
 			return NULL;
 		}
-		pid[i] = fork();
-		if(pid[i] == 0){
+		son_pids[i] = fork();
+		if(son_pids[i] == 0){
 			dup2(file_fd, 0);
 			close(file_fd);
 			dup2(fd[i][1], 1);
@@ -198,8 +200,8 @@ int *conv_pipe(char ***cmd, int size, char *files[], int sign_phone){
 		close(file_fd);
 	}
 	else{
-		pid[i] = fork();
-		if(pid[i] == 0){
+		son_pids[i] = fork();
+		if(son_pids[i] == 0){
 			dup2(fd[i][1], 1);
 			close(fd[i][1]);
 			close(fd[i][0]);
@@ -207,14 +209,15 @@ int *conv_pipe(char ***cmd, int size, char *files[], int sign_phone){
                  	       perror("incorrect command");
 			       exit(1);
                 	}
-
 		}
 	}
 	close(fd[i][1]);
+	proc_num++;
 	for(i = 1; i + 1 < size; i++){
+		son_pids = realloc(son_pids, (proc_num + 1) * sizeof(pid_t));
 		pipe(fd[i]);
-		pid[i] = fork();
-		if(pid[i] == 0){
+		son_pids[i] = fork();
+		if(son_pids[i] == 0){
 			dup2(fd[i - 1][0], 0);
 			close(fd[i - 1][0]);
 			dup2(fd[i][1], 1);
@@ -227,14 +230,16 @@ int *conv_pipe(char ***cmd, int size, char *files[], int sign_phone){
 		}
 		close(fd[i - 1][0]);
 		close(fd[i][1]);
+		proc_num++;
 	}
+	son_pids = realloc(son_pids, (proc_num + 1) * sizeof(pid_t));
 	if(files[1] != NULL){
 		int file_fd = open(files[1], O_WRONLY | O_CREAT, DEF_MODE);
 			if(file_fd < 0){
 				return NULL;
 			}
-			pid[i] = fork();
-			if(pid[i] == 0){
+			son_pids[i] = fork();
+			if(son_pids[i] == 0){
 				dup2(fd[i - 1][0],0);
 				close(fd[i - 1][0]);
 				dup2(file_fd, 1);
@@ -247,8 +252,8 @@ int *conv_pipe(char ***cmd, int size, char *files[], int sign_phone){
 			close(file_fd);
 	}
 	else{
-		pid[i] = fork();
-	       	if(pid[i] == 0){
+		son_pids[i] = fork();
+	       	if(son_pids[i] == 0){
 			dup2(fd[i - 1][0], 0);
 			close(fd[i - 1][0]);
 			if(execvp(*cmd[i], *cmd) < 0){
@@ -258,34 +263,39 @@ int *conv_pipe(char ***cmd, int size, char *files[], int sign_phone){
 
 		}
 	}
-	close(fd[i - 1][0]);
-	son_pid = pid[0];	
+	close(fd[i - 1][0]);	
+	proc_num++;
 	if(sign_phone){
-		return pid;
+		return NULL;
 	}
 	for(i = 0; i < size; i++){
 		wait(NULL);
 	}	
-	free(pid);
 	return NULL;
 }
 
 
 void handler(int signo){
 	puts("received SIGINT");
-	kill(son_pid, SIGKILL);
+	for(int i = 0; i > proc_num; i++){
+		if(son_pids[i]){	
+			kill(son_pids[i], SIGKILL);
+		}
+		waitpid(son_pids[i], NULL, 0);
+		son_pids[i] = 0;
+	}
 }
 
 int forwarding(char ***cmd, char *files[]){
-	pid_t pid;
+	son_pids = realloc(son_pids, (proc_num + 1) * sizeof(pid_t));
 	if(files[0] != NULL && files[1] != NULL){
 		int filefd0 = open(files[0], O_RDONLY, S_IROTH);
 		int filefd1 = open(files[1], O_WRONLY | O_CREAT, DEF_MODE);
 		if(filefd0 < 0 || filefd1 < 0){
 			return 0;
 		}
-		pid = fork();
-		if(pid == 0){
+		son_pids[0] = fork();
+		if(son_pids[0] == 0){
 			dup2(filefd0, 0);
 			dup2(filefd1, 1);
 			close(filefd0);
@@ -304,8 +314,8 @@ int forwarding(char ***cmd, char *files[]){
 			if(file_fd < 0){
 				return 0;
 			}
-			pid = fork();
-			if(pid == 0){
+			son_pids[0] = fork();
+			if(son_pids[0] == 0){
 				dup2(file_fd, 0);
 				close(file_fd);
 				if(execvp(*cmd[0], *cmd) < 0){
@@ -320,8 +330,8 @@ int forwarding(char ***cmd, char *files[]){
 			if(file_fd < 0){
 				return 0;
 			}
-			pid = fork();
-			if(pid == 0){
+			son_pids[0] = fork();
+			if(son_pids[0] == 0){
 				dup2(file_fd, 1);
 				close(file_fd);
 				if(execvp(*cmd[0], *cmd) < 0){
@@ -332,7 +342,7 @@ int forwarding(char ***cmd, char *files[]){
 			close(file_fd);
 		}
 	}
-	son_pid = pid;
+	proc_num++;
 	wait(NULL);
 	return 0;
 }
@@ -356,7 +366,6 @@ int main(int argc, char **argv){
 			for(int j = 0; cmd[size][j]; j++){
 			}
 		}
-		int *pid = NULL;
 		if(strcmp(*cmd[0], "cd") == 0){
 			change_dir(cmd, home);
 		}
@@ -368,27 +377,31 @@ int main(int argc, char **argv){
 				conv_or(cmd, size);
 				}
 			else if(sign_pipe){
-				pid = conv_pipe(cmd, size, files, sign_phone);
-				if(pid != NULL){
+				conv_pipe(cmd, size, files, sign_phone);
+				if(son_pids != NULL){
 					for(int i = 0; i < size; i++){
-						waitpid(pid[i], NULL, 0);
+						if(son_pids[i]){
+							waitpid(son_pids[i], NULL, 0);
+						}
 					}
-					free(pid);
+					proc_num = 0;
+					free(son_pids);
 				}
 			}
 			else if(files[0] || files[1]){
 				forwarding(cmd, files);
 			}
-			else{
-				pid_t pid = fork();
-				if(pid == 0){
+			else{	
+				son_pids = realloc(son_pids, (proc_num + 1) * sizeof(pid_t));
+				son_pids[0] = fork();
+				if(son_pids[0] == 0){
 					if(execvp(*cmd[0], cmd[0]) < 0){
                                 		perror("incorrect command");
                                 		exit(1);
 					}
 				}
-				son_pid = pid;
-				wait(NULL);
+				waitpid(son_pids[0], NULL, 0);
+				son_pids[0] = 0;
 			}
 		}
 		putchar('\n');
